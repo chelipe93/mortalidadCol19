@@ -2,37 +2,44 @@ import pandas as pd
 import plotly.express as px
 from dash import html, dcc
 
-# Leer los datos
-df_muertes = pd.read_excel("data/NoFetal2019.xlsx")
-df_divipola = pd.read_excel("data/Divipola.xlsx")
+def layout():
+    # Leer los datos
+    df_muertes = pd.read_excel("data/NoFetal2019.xlsx")
+    df_divipola = pd.read_excel("data/Divipola.xlsx")
 
-# Filtrar homicidios (códigos que comienzan con 'X95')
-df_homicidios = df_muertes[df_muertes['COD_MUERTE'].astype(str).str.startswith('X95')]
+    # Filtrar homicidios: códigos que empiezan con 'X95'
+    df_homicidios = df_muertes[df_muertes['COD_MUERTE'].astype(str).str.startswith('X95')]
 
-# Agrupar por código de municipio
-homicidios_por_cod = df_homicidios.groupby('COD_MUNICIPIO').size().reset_index(name='TotalHomicidios')
+    # Agrupar por COD_MUNICIPIO
+    homicidios_por_cod = df_homicidios.groupby('COD_MUNICIPIO').size().reset_index(name='TotalHomicidios')
 
-# Asegurarnos de que cada municipio aparece una vez
-df_divipola_unique = df_divipola[['COD_MUNICIPIO', 'MUNICIPIO']].drop_duplicates()
+    # Asegurar que no hay duplicados en municipios
+    df_divipola_unique = df_divipola[['COD_MUNICIPIO', 'MUNICIPIO']].drop_duplicates()
 
-# Unir para obtener nombres de ciudades
-df_merge = pd.merge(homicidios_por_cod, df_divipola_unique, on='COD_MUNICIPIO', how='left')
+    # Unir nombres de municipios
+    df_merge = pd.merge(homicidios_por_cod, df_divipola_unique, on='COD_MUNICIPIO', how='left')
 
-# Ordenar y tomar top 5
-top5 = df_merge.sort_values(by='TotalHomicidios', ascending=False).head(5)
+    # Eliminar municipios sin nombre por si hay nulos
+    df_merge = df_merge.dropna(subset=['MUNICIPIO'])
 
-# Crear gráfico
-fig = px.bar(
-    top5,
-    x='MUNICIPIO',
-    y='TotalHomicidios',
-    color='TotalHomicidios',
-    title='5 Ciudades más Violentas de Colombia - 2019 (Homicidios - Códigos X95)',
-    labels={'MUNICIPIO': 'Ciudad', 'TotalHomicidios': 'Total de Homicidios'},
-    color_continuous_scale='OrRd'
-)
+    # Tomar los 5 con mayor número de homicidios
+    top5 = df_merge.sort_values(by='TotalHomicidios', ascending=False).head(5)
 
-layout = html.Div([
-    html.H2("Top 5 ciudades más violentas (homicidios)", style={'textAlign': 'center'}),
-    dcc.Graph(figure=fig)
-])
+    # Crear gráfico de barras horizontal
+    fig = px.bar(
+        top5,
+        x='TotalHomicidios',
+        y='MUNICIPIO',
+        orientation='h',
+        title='5 Ciudades más Violentas de Colombia - 2019 (Homicidios - X95)',
+        labels={'TotalHomicidios': 'Total de Homicidios', 'MUNICIPIO': 'Ciudad'},
+        color='TotalHomicidios',
+        color_continuous_scale='Reds'
+    )
+
+    fig.update_layout(yaxis={'categoryorder':'total ascending'})  # ordena de mayor a menor visualmente
+
+    return html.Div([
+        html.H2("Top 5 ciudades más violentas (homicidios)", style={'textAlign': 'center'}),
+        dcc.Graph(figure=fig)
+    ])
