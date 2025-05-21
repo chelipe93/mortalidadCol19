@@ -9,7 +9,9 @@ import pages.top_causas as causas
 import pages.edades as edades
 import pages.sexo_departamento as sexo_dep
 
+# Crear la aplicación Dash
 app = Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.BOOTSTRAP])
+server = app.server  # <- Esto es necesario para Gunicorn y Railway
 
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
@@ -45,6 +47,8 @@ def display_page(pathname):
         return edades.layout
     elif pathname == '/sexo-departamento':
         return sexo_dep.layout
+    else:
+        return home.layout  # Asegura que devuelva la home por defecto
 
 if __name__ == '__main__':
     app.run(debug=True)
